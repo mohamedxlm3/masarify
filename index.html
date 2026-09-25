@@ -484,7 +484,21 @@ function cloudSetup(){modal(`<h3>🔗 ربط بحساب جوجل</h3>
  <button class="btn wide" style="margin-top:8px" onclick="window.open('${CLOUD_URL}?action=info','_blank')">افتح صفحة جوجل</button>
  <button class="btn wide" style="margin-top:6px" onclick="S.cloud.enabled=true;save();closeModal();cloudMenu();renderAll();toast('اتصلت بالسحابة ☁️')">ربط ✅</button>
  <button class="btn ghost wide" style="margin-top:6px" onclick="closeModal()">إلغاء</button>`)}
-function cloudCall(action,payload){return fetch(CLOUD_URL+'?action='+action+(payload?'&payload='+encodeURIComponent(payload):''),{method:'GET'})
+function cloudCall(action,payload){
+ const url=CLOUD_URL+'?action='+action+(payload?'&payload='+encodeURIComponent(payload):'');
+ return fetch(url,{method:'GET',redirect:'follow',mode:'cors',credentials:'omit'})
+  .then(r=>r.text())
+  .then(t=>{try{return JSON.parse(t)}catch(e){throw new Error('رد غير متوقع: '+t.slice(0,80))}})
+  .catch(err=>{
+   // fallback: نجرب عن طريق JSONP-style script
+   return new Promise((res,rej)=>{
+    const cb='__cl_'+Date.now();
+    window[cb]=(data)=>{res(data);delete window[cb];const s=document.getElementById(cb);if(s)s.remove()};
+    const s=document.createElement('script');
+    s.id=cb;
+    s.onerror=()=>{rej(new Error('فشل الاتصال بالسيرفر — اتأكد من النت وسجل جوجل'));delete window[cb];s.remove()};
+    s.src=url+'&callback='+cb;
+    document.body.appendChild(s)})})}),{method:'GET'})
  .then(r=>r.text()).then(t=>{try{return JSON.parse(t)}catch(e){throw new Error('رد غير متوقع من السيرفر')}})}
 function cloudPush(){const btn=$('#cloudBtn');btn.classList.add('busy');
  return cloudCall('save',JSON.stringify(S)).then(r=>{
